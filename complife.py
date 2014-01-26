@@ -18,7 +18,7 @@ def grid_score(grid_cell,grid_color):
     else:
         return 0.5
 
-def simulate_grid(grid_cell,grid_color,max_rep=2000,max_cycle=100,interact=False,runit=True):
+def simulate_grid(grid_cell,grid_color,max_rep=2000,max_cycle=100,interact=False,runit=True,tock=50,paused=False):
     grid_shape = grid_cell.shape
     (grid_height,grid_width) = grid_shape
 
@@ -34,25 +34,42 @@ def simulate_grid(grid_cell,grid_color,max_rep=2000,max_cycle=100,interact=False
     hash_list = np.zeros(max_cycle,dtype='|S80')
     hash_pos = 0
 
+    do_exit = False
     found_cycle = False
     cycles_left = None
 
     for rep in range(max_rep):
         if interact:
+            if paused:
+                while True:
+                    event = pygame.event.wait()
+                    if event.type == pygame.KEYUP:
+                        if event.key == pygame.K_SPACE:
+                            paused = False
+                            break
+                        if event.key == pygame.K_TAB:
+                            break
+                        if event.key == pygame.K_q:
+                            do_exit = True
+                            break
+
             # Limit frame speed to 50 FPS
-            time_passed = clock.tick(50)
+            time_passed = clock.tick(tock)
 
             # Handle events
-            do_exit = False
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     sys.exit()
                 if event.type == pygame.KEYUP:
                     print (event.key,pygame.K_q)
+                    if event.key == pygame.K_SPACE:
+                        paused = True
                     if event.key == pygame.K_q:
-                        print 'Quitting'
                         do_exit = True
-            if do_exit: break
+
+            if do_exit:
+                print 'Quitting'
+                break
 
             # Redraw the background
             screen.fill(BLK_COLOR)
@@ -72,16 +89,24 @@ def simulate_grid(grid_cell,grid_color,max_rep=2000,max_cycle=100,interact=False
 
         # count up neighbors
         nbr_counts = np.zeros(grid_shape,dtype=np.int)
-        nbr_counts[:-1,:] += grid_cell[1:,:] # below
-        nbr_counts[1:,:] += grid_cell[:-1,:] # above
-        nbr_counts[:,:-1] += grid_cell[:,1:] # right
-        nbr_counts[:,1:] += grid_cell[:,:-1] # left_
+        nbr_counts[1:,1:] += grid_cell[:-1,:-1] # top-left
+        nbr_counts[1:,:] += grid_cell[:-1,:] # top-middle
+        nbr_counts[1:,:-1] += grid_cell[:-1,1:] # top-right
+        nbr_counts[:,1:] += grid_cell[:,:-1] # middle-left
+        nbr_counts[:,:-1] += grid_cell[:,1:] # middle-right
+        nbr_counts[:-1,1:] += grid_cell[1:,:-1] # bottom-left
+        nbr_counts[:-1,:] += grid_cell[1:,:] # bottom-middle
+        nbr_counts[:-1,:-1] += grid_cell[1:,1:] # bottom-right
 
         nbr_color = np.zeros(grid_shape)
-        nbr_color[:-1,:] += grid_color[1:,:] # below
-        nbr_color[1:,:] += grid_color[:-1,:] # above
-        nbr_color[:,:-1] += grid_color[:,1:] # right
-        nbr_color[:,1:] += grid_color[:,:-1] # left_
+        nbr_color[1:,1:] += grid_color[:-1,:-1] # top-left
+        nbr_color[1:,:] += grid_color[:-1,:] # top-middle
+        nbr_color[1:,:-1] += grid_color[:-1,1:] # top-right
+        nbr_color[:,1:] += grid_color[:,:-1] # middle-left
+        nbr_color[:,:-1] += grid_color[:,1:] # middle-right
+        nbr_color[:-1,1:] += grid_color[1:,:-1] # bottom-left
+        nbr_color[:-1,:] += grid_color[1:,:] # bottom-middle
+        nbr_color[:-1,:-1] += grid_color[1:,1:] # bottom-right
         nbr_color /= nbr_counts
 
         # implement cell changes
@@ -142,11 +167,11 @@ def save_panel(players,pname):
     for (i,p) in enumerate(players):
         save_player(pname+'/'+('player_%d.lif'%i),p)
 
-def run_match(player_left,player_right,max_rep=2000,max_cycle=100,interact=False,runit=True):
+def run_match(player_left,player_right,**kwargs):
     player_flip = player_right[:,-1::-1]
     grid_cell = np.hstack((player_left,player_flip))
     grid_color = np.hstack((1.0*player_left,0.0*player_flip))
-    return simulate_grid(grid_cell,grid_color,max_rep=max_rep,interact=interact,runit=runit)
+    return simulate_grid(grid_cell,grid_color,**kwargs)
 
 def mate(player_one,player_two):
     grid_shape = player_one.shape

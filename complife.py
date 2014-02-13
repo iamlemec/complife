@@ -5,8 +5,8 @@ import pygame
 import hashlib
 
 # display constants
-cell_width = 10
-cell_height = 10
+cell_width = 5
+cell_height = 5
 
 def hash_array(a):
     return hashlib.sha1(a.view(np.uint8)).hexdigest()
@@ -17,6 +17,13 @@ def grid_score(grid_cell,grid_color):
         return np.mean(grid_color[grid_cell==1])
     else:
         return 0.5
+
+if hasattr(np.random,'choice'):
+    random_choice = np.random.choice
+else:
+    def random_choice(x,n):
+        return np.random.permutation(x)[:n]
+
 
 def simulate_grid(grid_cell,grid_color,max_rep=2000,max_cycle=100,interact=False,runit=True,tock=50,paused=False):
     grid_shape = grid_cell.shape
@@ -214,7 +221,7 @@ def repopulate(base_players,n_players,mutate_factor=0.0):
     n_base = len(base_players)
     new_players = []
     for i in range(n_players-n_base):
-        challenge = np.random.choice(range(n_base),size=2,replace=False)
+        challenge = random_choice(range(n_base),2)
         new_players.append(mutate(mate(*[base_players[i] for i in challenge]),mutate_factor))
     return base_players + new_players
 
@@ -222,6 +229,7 @@ def tourney(all_players,n_games=10):
     n_players = len(all_players)
     scores = np.zeros(n_players)
     for (i1,p1) in enumerate(all_players):
+        print 'player %i' % i1
         opps = np.random.randint(n_players,size=n_games)
         scores[i1] = np.mean([run_match(p1,all_players[i2]) for i2 in opps])
     return scores
@@ -239,6 +247,7 @@ def iterate(in_panel,out_panel,max_rep,n_players=100,selection=0.25,mutation=0.4
 
     mean_scores = np.zeros(max_rep)
     for rep in range(max_rep):
+        print 'rep %i' % rep
         (new_players,scores) = evolve(zero_players,n_players,n_elim=selection,mutate_factor=mutation)
         mscore = np.mean(scores)
         mdens = np.mean([np.mean(p) for p in new_players])
